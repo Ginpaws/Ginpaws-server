@@ -1,7 +1,7 @@
 import axios from "axios";
 
 async function fetchData(targetPool: string) {
-    const url = `http://localhost:3000/getActivePool?id=${targetPool}`;
+    const url = `http://localhost:8080/getActivePool?id=${targetPool}`;
     const response = await axios.get(url);
     return response.data;
 }

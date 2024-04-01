@@ -34,7 +34,7 @@ import {
 import { buildAndSendMultipleTx, combineInstructions, loadInnerSimpleV0Transaction } from '../utils';
 
 async function fetchData(body) {
-    const response = await axios.post('http://localhost:3000/x_ab', body);
+    const response = await axios.post("http://localhost:8080/x_ab", body);
     return response.data;
 }
 

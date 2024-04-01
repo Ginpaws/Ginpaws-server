@@ -33,7 +33,7 @@ import {
 } from '../config';
 
 async function fetchData(inputToken: string, outputToken: string, targetPool: string, inputTokenAmount: number, wallet: string) {
-    const url = `http://localhost:3000/swap?inputToken=${inputToken}&outputToken=${outputToken}&targetPool=${targetPool}&inputTokenAmount=${inputTokenAmount}&wallet=${wallet}`;
+    const url = `http://localhost:8080/swap?inputToken=${inputToken}&outputToken=${outputToken}&targetPool=${targetPool}&inputTokenAmount=${inputTokenAmount}&wallet=${wallet}`;
     const response = await axios.get(url);
     return response.data;
 }

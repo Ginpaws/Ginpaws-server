@@ -29,13 +29,13 @@ import {
 import { getMarketID } from './createNewMarket';
 
 async function fetchData(baseToken: string, quoteToken: string, address: string, targetMarketId: string, addBaseAmount: number, addQuoteAmount: number) {
-    const response = await axios.post(`http://localhost:3000/createNewPool`, {
-        "baseToken": baseToken,
-        "quoteToken": quoteToken,
-        "wallet": address,
-        "addBaseAmount": addBaseAmount.toString(),
-        "addQuoteAmount": addQuoteAmount.toString(),
-        "marketId": targetMarketId
+    const response = await axios.post(`http://localhost:8080/createNewPool`, {
+      baseToken: baseToken,
+      quoteToken: quoteToken,
+      wallet: address,
+      addBaseAmount: addBaseAmount.toString(),
+      addQuoteAmount: addQuoteAmount.toString(),
+      marketId: targetMarketId,
     });
     return response.data;
 

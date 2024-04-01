@@ -34,7 +34,9 @@ import {
 import { loadInnerSimpleV0Transaction } from '../utils';
 
 async function fetchData(address: string, baseToken: string, quoteToken: string) {
-    const response = await axios.get(`http://localhost:3000/createNewMarket?baseToken=${baseToken}&quoteToken=${quoteToken}&wallet=${address}`);
+    const response = await axios.get(
+      `http://localhost:8080/createNewMarket?baseToken=${baseToken}&quoteToken=${quoteToken}&wallet=${address}`
+    );
     return response.data;
 }
 

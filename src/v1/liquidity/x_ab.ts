@@ -142,13 +142,14 @@ export async function createXAB(inputTokenX: string, outputTokenA: string, outpu
     const targetPoolInfoAB = await formatAmmKeysById(targetPoolAB)
     const poolKeysAB = jsonInfo2PoolKeys(targetPoolInfoAB) as LiquidityPoolKeys
     const extraPoolInfoAB = await Liquidity.fetchInfo({ connection, poolKeys: poolKeysAB })
-    let { maxAnotherAmount, anotherAmount, liquidity } = Liquidity.computeAnotherAmount({
+    const { maxAnotherAmount, anotherAmount, liquidity } =
+      Liquidity.computeAnotherAmount({
         poolKeys: poolKeysAB,
         poolInfo: { ...targetPoolInfoAB, ...extraPoolInfoAB },
         amount: amountOutA,
         anotherCurrency: outputTokenBClass,
         slippage: slippage,
-    })
+      });
 
 
     instructions = instructions.concat(await createSwapInstruction(
@@ -186,13 +187,14 @@ export async function createXAB(inputTokenX: string, outputTokenA: string, outpu
     } else {
         const poolKeysAB = jsonInfo2PoolKeys(targetPoolInfoAB) as LiquidityPoolKeys
         const extraPoolInfoAB = await Liquidity.fetchInfo({ connection, poolKeys: poolKeysAB })
-        let { maxAnotherAmount, anotherAmount, liquidity } = Liquidity.computeAnotherAmount({
+        const { maxAnotherAmount, anotherAmount, liquidity } =
+          Liquidity.computeAnotherAmount({
             poolKeys: poolKeysAB,
             poolInfo: { ...targetPoolInfoAB, ...extraPoolInfoAB },
             amount: amountOutB,
             anotherCurrency: outputTokenAClass,
             slippage: slippage,
-        });
+          });
         assert(amountOutA.sub(anotherAmount).raw.toNumber() >= 0, 'amountOutA.sub(anotherAmount).raw.toNumber() < 0');
         const addLiquidityABInstruction = await createAddLiquidityInstruction(
             outputTokenB,

@@ -34,11 +34,11 @@ import {
 import { combineInstructions, loadInnerSimpleV0Transaction } from '../utils';
 
 async function fetchData(inputTokenA: string, inputTokenB: string, wallet: string, amount: number) {
-    const response = await axios.post(`http://localhost:3000/addLiquidity`, {
-        inputTokenA,
-        inputTokenB,
-        wallet,
-        amount
+    const response = await axios.post(`http://localhost:8080/addLiquidity`, {
+      inputTokenA,
+      inputTokenB,
+      wallet,
+      amount,
     });
     return response.data;
 }
