@@ -80,35 +80,28 @@ function isInnerSimpleV0Transaction(obj: any): obj is InnerSimpleV0Transaction[]
 }
 
 function loadInnerSimpleV0Transaction(objarray: any): InnerSimpleV0Transaction[] {
-    // load obj to a InnerSimpleV0Transaction[]
-    objarray.forEach((element: InnerSimpleV0Transaction) => {
-        element.instructions = element.instructions.map((i: any) => {
-            i.programId = new PublicKey(i.programId);
-            if (i.keys) {
-                i.keys = i.keys.map((a: any) => {
-                    a.pubkey = new PublicKey(a.pubkey);
-                    return a;
+    // load objarray to a InnerSimpleV0Transaction[]
+    objarray.forEach((obj: any) => {
+        if (obj.innerTransactions) {
+            obj.innerTransactions.forEach((element: InnerSimpleV0Transaction) => {
+                element.instructions = element.instructions.map((i: any) => {
+                    i.programId = new PublicKey(i.programId);
+                    if (i.keys) {
+                        i.keys = i.keys.map((a: any) => {
+                            a.pubkey = new PublicKey(a.pubkey);
+                            return a;
+                        });
+                    }
+                    if (i.data) {
+                        i.data = Buffer.from(i.data, 'base64');
+                    }
+                    return i;
                 });
-            }
-            if (i.data) {
-                i.data = Buffer.from(i.data, 'base64');
-            }
-            return i;
-        });
+            });
+        }
     });
     return objarray;
 }
-
-// function isSendOptions(obj: any): obj is SendOptions {
-//     // return true if the object matches the structure of SendOptions
-// }
-
-const getConfirmation = async (connection: Connection, tx: string) => {
-    const result = await connection.getSignatureStatus(tx, {
-        searchTransactionHistory: true,
-    });
-    return result.value?.confirmationStatus || 'confirmed';
-};
 
 const getError = async (connection: Connection, tx: string) => {
     const result = await connection.getSignatureStatus(tx, {
@@ -138,7 +131,7 @@ export async function createNewPool(baseToken: string, quoteToken: string, addBa
         wallet.publicKey.toString(), targetMarketId.toString(),
         addBaseAmount,
         addQuoteAmount);
-    const ammCreatePoolInstructions = loadInnerSimpleV0Transaction(data.ammCreatePoolInstructions);
+    const ammCreatePoolInstructions = loadInnerSimpleV0Transaction(data);
     const txIds = await buildAndSendTx(ammCreatePoolInstructions);
     for (const tx of txIds) {
         const latestBlockHash = await connection.getLatestBlockhash();

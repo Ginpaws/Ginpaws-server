@@ -77,7 +77,7 @@ export async function addLiquidity(
     })
 
     return {
-        addLiquidityInstructions: addLiquidityInstructionResponse.innerTransactions
+        innerTransactions: addLiquidityInstructionResponse.innerTransactions
     }
 }
 
@@ -97,7 +97,8 @@ export async function createAddLiquidityInstruction(inputTokenA: string, inputTo
     if (fs.existsSync(path)) {
         pairId = JSON.parse(fs.readFileSync(path, 'utf8'))[0];
     }
-    return await addLiquidity({
+    let instructions = [];
+    instructions.push(await addLiquidity({
         baseToken: new Token(TOKEN_PROGRAM_ID, inputTokenA, inputTokenAInfo.decimals, inputTokenAInfo.symbol, inputTokenAInfo.name),
         quoteToken: new Token(TOKEN_PROGRAM_ID, inputTokenB, inputTokenBInfo.decimals, inputTokenBInfo.symbol, inputTokenBInfo.name),
         targetPool: pairId,
@@ -105,5 +106,6 @@ export async function createAddLiquidityInstruction(inputTokenA: string, inputTo
         slippage: new Percent(1, 100),
         walletTokenAccounts: await getWalletTokenAccount(connection, new PublicKey(wallet)),
         walletPublickey: new PublicKey(wallet)
-    });
+    }));
+    return instructions;
 }

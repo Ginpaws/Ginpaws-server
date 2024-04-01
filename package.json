@@ -6,7 +6,7 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"lint": "npx eslint . --ext .ts",
-		"start": "ts-node src/v1/app.ts"
+		"start": "nodemon src/v1/app.ts"
 	},
 	"keywords": [],
 	"author": "",

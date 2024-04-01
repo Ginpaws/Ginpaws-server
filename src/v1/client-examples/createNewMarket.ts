@@ -31,6 +31,7 @@ import {
     wallet,
     connection,
 } from '../config';
+import { loadInnerSimpleV0Transaction } from '../utils';
 
 async function fetchData(address: string, baseToken: string, quoteToken: string) {
     const response = await axios.get(`http://localhost:3000/createNewMarket?baseToken=${baseToken}&quoteToken=${quoteToken}&wallet=${address}`);
@@ -66,47 +67,6 @@ export async function buildAndSendTx(innerSimpleV0Transaction: InnerSimpleV0Tran
     return await sendTx(connection, wallet, willSendTx, options)
 }
 
-function isInnerSimpleV0Transaction(obj: any): obj is InnerSimpleV0Transaction[] {
-    // return true if the object matches the structure of InnerSimpleV0Transaction
-    for (const item of obj) {
-        if (!item.instructions) return false;
-        if (!item.signers) return false;
-        if (!item.instructionTypes) return false;
-    }
-    return true;
-}
-
-function loadInnerSimpleV0Transaction(objarray: any): InnerSimpleV0Transaction[] {
-    // load obj to a InnerSimpleV0Transaction[]
-    objarray.forEach((element: InnerSimpleV0Transaction) => {
-        element.instructions = element.instructions.map((i: any) => {
-            i.programId = new PublicKey(i.programId);
-            if (i.keys) {
-                i.keys = i.keys.map((a: any) => {
-                    a.pubkey = new PublicKey(a.pubkey);
-                    return a;
-                });
-            }
-            if (i.data) {
-                i.data = Buffer.from(i.data, 'base64');
-            }
-            return i;
-        });
-    });
-    return objarray;
-}
-
-// function isSendOptions(obj: any): obj is SendOptions {
-//     // return true if the object matches the structure of SendOptions
-// }
-
-const getConfirmation = async (connection: Connection, tx: string) => {
-    const result = await connection.getSignatureStatus(tx, {
-        searchTransactionHistory: true,
-    });
-    return result.value?.confirmationStatus || 'confirmed';
-};
-
 const getError = async (connection: Connection, tx: string) => {
     const result = await connection.getSignatureStatus(tx, {
         searchTransactionHistory: true,
@@ -116,9 +76,9 @@ const getError = async (connection: Connection, tx: string) => {
 
 export async function getMarketID(baseToken: string, quoteToken: string) {
     const data = await fetchData(wallet.publicKey.toString(), baseToken, quoteToken);
-    const createMarketInstruments: InnerSimpleV0Transaction[] = loadInnerSimpleV0Transaction(data.createMarketInstruments);
+    const createMarketInstruction = loadInnerSimpleV0Transaction(data);
     const options: SendOptions = data.SendOptions;
-    const txids = await buildAndSendTx(createMarketInstruments, options);
+    const txids = await buildAndSendTx(createMarketInstruction, options);
     // wait until the transaction is confirmed
     for (const tx of txids) {
         const latestBlockHash = await connection.getLatestBlockhash();

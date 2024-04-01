@@ -37,7 +37,7 @@ export async function createMarket(input: TestTxInputInfo) {
     }
 
     // return { txids: await buildAndSendTx(createMarketInstruments.innerTransactions, SendOptions) }
-    return { createMarketInstruments: createMarketInstruments.innerTransactions, SendOptions }
+    return { innerTransactions: createMarketInstruments.innerTransactions, SendOptions }
 }
 
 export async function createNewMarketInstructions(baseTokenMint: string, quoteTokenMint: string, wallet: string) {
@@ -48,15 +48,19 @@ export async function createNewMarketInstructions(baseTokenMint: string, quoteTo
     }
     const baseTokenClass: Token = new Token(TOKEN_PROGRAM_ID, baseTokenMint, baseTokenInfo.decimals, baseTokenInfo.symbol, baseTokenInfo.name);
     const quoteTokenClass: Token = new Token(TOKEN_PROGRAM_ID, quoteTokenMint, quoteTokenInfo.decimals, quoteTokenInfo.symbol, quoteTokenInfo.name);
-    const walletPublicKey = new PublicKey(wallet)
-    return await createMarket({
-        baseToken: baseTokenClass,
-        quoteToken: quoteTokenClass,
-        walletPublicKey
-    });
+    const walletPublicKey = new PublicKey(wallet);
+    let instructions = [];
+    instructions.push(
+        await createMarket({
+            baseToken: baseTokenClass,
+            quoteToken: quoteTokenClass,
+            walletPublicKey
+        })
+    );
+    return instructions;
 }
 
 export async function createNewMarket(baseTokenMint: string, quoteTokenMint: string, wallet: string) {
     const instructions = await createNewMarketInstructions(baseTokenMint, quoteTokenMint, wallet);
-    return { txids: await buildAndSendTx(instructions.createMarketInstruments, instructions.SendOptions) }
+    return { txids: await buildAndSendTx(instructions[0].innerTransactions, instructions[0].SendOptions) }
 }

@@ -31,6 +31,7 @@ import {
     wallet,
     connection,
 } from '../config';
+import { combineInstructions, loadInnerSimpleV0Transaction } from '../utils';
 
 async function fetchData(inputTokenA: string, inputTokenB: string, wallet: string, amount: number) {
     const response = await axios.post(`http://localhost:3000/addLiquidity`, {
@@ -81,49 +82,13 @@ function isInnerSimpleV0Transaction(obj: any): obj is InnerSimpleV0Transaction[]
     return true;
 }
 
-function loadInnerSimpleV0Transaction(objarray: any): InnerSimpleV0Transaction[] {
-    // load obj to a InnerSimpleV0Transaction[]
-    objarray.forEach((element: InnerSimpleV0Transaction) => {
-        element.instructions = element.instructions.map((i: any) => {
-            i.programId = new PublicKey(i.programId);
-            if (i.keys) {
-                i.keys = i.keys.map((a: any) => {
-                    a.pubkey = new PublicKey(a.pubkey);
-                    return a;
-                });
-            }
-            if (i.data) {
-                i.data = Buffer.from(i.data, 'base64');
-            }
-            return i;
-        });
-    });
-    return objarray;
-}
-
-// function isSendOptions(obj: any): obj is SendOptions {
-//     // return true if the object matches the structure of SendOptions
-// }
-
-const getConfirmation = async (connection: Connection, tx: string) => {
-    const result = await connection.getSignatureStatus(tx, {
-        searchTransactionHistory: true,
-    });
-    return result.value?.confirmationStatus || 'confirmed';
-};
-
-const getError = async (connection: Connection, tx: string) => {
-    const result = await connection.getSignatureStatus(tx, {
-        searchTransactionHistory: true,
-    });
-    return result.value?.err;
-}
-
 export async function main(inputTokenA: string, inputTokenB: string, wallet: string, amount: number) {
     const data = await fetchData(inputTokenA, inputTokenB, wallet, amount);
-    const instructions = loadInnerSimpleV0Transaction(data.addLiquidityInstructions);
-    const txIds = await buildAndSendTx(instructions);
-    console.log(txIds);
+    const innerTransactions = loadInnerSimpleV0Transaction(data);
+    const instructions = combineInstructions(innerTransactions);
+    console.log(instructions);
+    // const txIds = await buildAndSendTx(instructions);
+    // console.log(txIds);
 }
 
 main("HSvEJfU8hXUWFRodbVbRfwYb2p4DwSwpiMaoB7UDRVD4",

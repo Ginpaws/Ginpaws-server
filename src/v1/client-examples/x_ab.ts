@@ -31,10 +31,10 @@ import {
     wallet,
     connection,
 } from '../config';
+import { buildAndSendMultipleTx, combineInstructions, loadInnerSimpleV0Transaction } from '../utils';
 
-async function fetchData(inputToken: string, outputToken: string, targetPool: string, inputTokenAmount: number, wallet: string) {
-    const url = `http://localhost:3000/swap?inputToken=${inputToken}&outputToken=${outputToken}&targetPool=${targetPool}&inputTokenAmount=${inputTokenAmount}&wallet=${wallet}`;
-    const response = await axios.get(url);
+async function fetchData(body) {
+    const response = await axios.post('http://localhost:3000/x_ab', body);
     return response.data;
 }
 
@@ -77,46 +77,47 @@ function isInnerSimpleV0Transaction(obj: any): obj is InnerSimpleV0Transaction[]
     return true;
 }
 
-function loadInnerSimpleV0Transaction(objarray: any): InnerSimpleV0Transaction[] {
-    // load objarray to a InnerSimpleV0Transaction[]
-    objarray.forEach((obj: any) => {
-        if (obj.innerTransactions) {
-            obj.innerTransactions.forEach((element: InnerSimpleV0Transaction) => {
-                element.instructions = element.instructions.map((i: any) => {
-                    i.programId = new PublicKey(i.programId);
-                    if (i.keys) {
-                        i.keys = i.keys.map((a: any) => {
-                            a.pubkey = new PublicKey(a.pubkey);
-                            return a;
-                        });
-                    }
-                    if (i.data) {
-                        i.data = Buffer.from(i.data, 'base64');
-                    }
-                    return i;
-                });
-            });
-        }
-    });
-    return objarray;
-}
-
-export async function main(inputToken: string, outputToken: string, targetPool: string, inputTokenAmount: number, wallet: string) {
-    const data = await fetchData(inputToken, outputToken, targetPool, inputTokenAmount, wallet);
+async function main(body: object) {
+    const data = await fetchData(body);
     console.log(data);
-    const instructions = loadInnerSimpleV0Transaction(data);
-    const tx = await buildAndSendTx(instructions);
-    console.log(tx);
+    const innerTransactions = loadInnerSimpleV0Transaction(data);
+    const instructions = combineInstructions(innerTransactions);
+    console.log(instructions);
+    const txids = await buildAndSendTx(instructions);
+    console.log(txids);
 }
 
-main("9T7uw5dqaEmEC4McqyefzYsEg5hoC4e2oV8it1Uc4f1U",
-    "EzpUPw9yqJg7c2BhkLL5EtKdwQmAQ7veWK8ZoMw7XH2k",
-    "4oGmnZBGNCRKqFGsf9dibUVd537fnakxLC64FMAsYWNZ",
-    1000000000,
-    wallet.publicKey.toBase58());
-
-// try {
-//     getMarketID();
-// } catch(err) {
-//     console.log(err);
-// }
+main({
+    "tokenIn": {
+        "symbol": "WSOL",
+        "address": "HSvEJfU8hXUWFRodbVbRfwYb2p4DwSwpiMaoB7UDRVD4",
+        "decimals": 9,
+        "name": "Wrapped Solana",
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+        "coingeckoId": "solana",
+        "assetAddress": "So11111111111111111111111111111111111111112",
+        "balance": "cb6eeb"
+    },
+    "amountTokenIn": "100",
+    "tokenOut1": {
+        "symbol": "BTC",
+        "address": "9T7uw5dqaEmEC4McqyefzYsEg5hoC4e2oV8it1Uc4f1U",
+        "decimals": 6,
+        "name": "Wrapped Bitcoin (Sollet)",
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/9n4nbM75f5Ui33ZbPYXn59EwSgE8CGsHtAeTH5YFeJ9E/logo.png",
+        "coingeckoId": "bitcoin",
+        "assetAddress": "4gGKgUYvGkCT62Cu1zfPspuR7VPNPYrigXFmF9KTPji8",
+        "balance": "00"
+    },
+    "tokenOut2": {
+        "symbol": "USDC",
+        "address": "V8vPw3sRHwN7YPpcEfwsNP8zirDzMYCBU4vfkzFusDw",
+        "decimals": 6,
+        "name": "USD Coin",
+        "logoURI": "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
+        "coingeckoId": "usd-coin",
+        "assetAddress": "5ihkgQGjKvWvmMtywTgLdwokZ6hqFv5AgxSyYoCNufQW",
+        "balance": "6d0979"
+    },
+    "wallet": wallet.publicKey.toBase58()
+})

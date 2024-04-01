@@ -97,7 +97,7 @@ async function ammCreatePool(input: TestTxInputInfo) {
         feeDestinationId: new PublicKey('3XMrhbv989VxAMi3DErLV9eJht1pHppW5LbKxe9fkEFR'), // only mainnet use this
     })
 
-    return { ammCreatePoolInstructions: initPoolInstructionResponse.innerTransactions }
+    return { innerTransactions: initPoolInstructionResponse.innerTransactions }
 }
 
 export async function createNewPoolInstruction(baseToken: string, quoteToken: string, wallet: string, addBaseAmount: number, addQuoteAmount: number, marketId: string) {
@@ -134,8 +134,8 @@ export async function createNewPoolInstruction(baseToken: string, quoteToken: st
     if (isAlreadyInited) {
         throw new Error('Pool already exists');
     }
-
-    return await ammCreatePool({
+    let instructions = [];
+    instructions.push(await ammCreatePool({
         startTime,
         addBaseAmount: addBaseAmountBN,
         addQuoteAmount: addQuoteAmountBN,
@@ -144,7 +144,8 @@ export async function createNewPoolInstruction(baseToken: string, quoteToken: st
         targetMarketId,
         wallet: walletPubkey,
         walletTokenAccounts,
-    });
+    }));
+    return instructions;
 }
 
 async function howToUse() {

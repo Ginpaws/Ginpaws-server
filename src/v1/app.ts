@@ -1,4 +1,6 @@
 import express from 'express';
+import bodyParser from 'body-parser';
+
 import { createNewMarket, createNewMarketInstructions } from './createMarket';
 import TOKEN from './token/tokens.json';
 import fs from 'fs';
@@ -6,11 +8,13 @@ import { formatAmmKeysById } from './liquidity/getActivePools';
 import { createNewPoolInstruction } from './liquidity/createNewPool';
 import { createSwapInstruction } from './swap/swapTokens';
 import { createAddLiquidityInstruction } from './liquidity/addLiquidity';
+import { createXAB } from './liquidity/x_ab';
 
 const app = express();
 const port = 3000;
 
 app.use(express.json());
+// app.use(bodyParser.json());
 
 app.get('/', (req, res) => {
     res.send('Hello World!');
@@ -118,13 +122,28 @@ app.get("/swap", async (req, res) => {
     res.send(instructions);
 })
 
-app.get("/x_ab", async (req, res) => {
-    if (!req.query.x || !req.query.a || !req.query.b) {
-        return res.status(400).send("x, a, and b are required");
+app.post("/x_ab", async (req, res) => {
+    const { tokenIn, tokenOut1, tokenOut2, wallet, amountTokenIn } = req.body;
+    if (!tokenIn) {
+        return res.status(400).send("tokenIn is required");
     }
-    if (!req.query.inputTokenAmount) {
-        return res.status(400).send("inputTokenAmount is required");
+    if (!tokenOut1) {
+        return res.status(400).send("tokenOut1 is required");
     }
+    if (!tokenOut2) {
+        return res.status(400).send("tokenOut2 is required");
+    }
+    if (!wallet) {
+        return res.status(400).send("wallet is required");
+    }
+    if (!amountTokenIn) {
+        return res.status(400).send("amountTokenIn is required");
+    }
+    if (tokenIn.address === tokenOut1.address || tokenIn.address === tokenOut2.address || tokenOut1.address === tokenOut2.address) {
+        return res.status(400).send("tokenIn, tokenOut1, and tokenOut2 must be different");
+    }
+    const instructions = await createXAB(tokenIn.address, tokenOut1.address, tokenOut2.address, wallet, parseInt(amountTokenIn));
+    res.send(instructions);
 })
 
 app.post("/addLiquidity", async (req, res) => {

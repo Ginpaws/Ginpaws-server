@@ -77,9 +77,14 @@ async function swapOnlyAmm(input: TestTxInputInfo) {
 }
 
 export async function createXAB(inputTokenX: string, outputTokenA: string, outputTokenB: string, wallet: string, inputAmount: number) {
+    let instructions = [];
     const inputTokenXInfo = TOKEN.find((i) => i.mint === inputTokenX)
     const outputTokenAInfo = TOKEN.find((i) => i.mint === outputTokenA)
     const outputTokenBInfo = TOKEN.find((i) => i.mint === outputTokenB)
+
+    if (!inputTokenXInfo || !outputTokenAInfo || !outputTokenBInfo) {
+        throw new Error('cannot find the token info')
+    }
 
     const outputTokenAClass = new Token(TOKEN_PROGRAM_ID, outputTokenA, outputTokenAInfo.decimals, outputTokenAInfo.symbol, outputTokenAInfo.name)
     const outputTokenBClass = new Token(TOKEN_PROGRAM_ID, outputTokenB, outputTokenBInfo.decimals, outputTokenBInfo.symbol, outputTokenBInfo.name)
@@ -98,13 +103,13 @@ export async function createXAB(inputTokenX: string, outputTokenA: string, outpu
     } else if (fs.existsSync('src/v1/liquidity/pair/pair' + outputTokenAInfo.symbol + inputTokenXInfo.symbol + '.json')) {
         targetPoolXA = JSON.parse(fs.readFileSync('src/v1/liquidity/pair/pair' + outputTokenAInfo.symbol + inputTokenXInfo.symbol + '.json', 'utf8'))[0];
     }
-    const targetPoolInfo = await formatAmmKeysById(targetPoolXA)
-    const poolKeys = jsonInfo2PoolKeys(targetPoolInfo) as LiquidityPoolKeys
+    const targetPoolInfoXA = await formatAmmKeysById(targetPoolXA)
+    const poolKeysXA = jsonInfo2PoolKeys(targetPoolInfoXA) as LiquidityPoolKeys
     const currencyOutA = new Token(TOKEN_PROGRAM_ID, outputTokenA, outputTokenAInfo.decimals, outputTokenAInfo.symbol, outputTokenAInfo.name)
     // -------- step 1: coumpute amount out --------
     const { amountOut: amountOutA, minAmountOut: minAmountOutA } = Liquidity.computeAmountOut({
-        poolKeys: poolKeys,
-        poolInfo: await Liquidity.fetchInfo({ connection, poolKeys }),
+        poolKeys: poolKeysXA,
+        poolInfo: await Liquidity.fetchInfo({ connection, poolKeys: poolKeysXA }),
         amountIn: inputTokenXAAmount,
         currencyOut: currencyOutA,
         slippage: slippage,
@@ -116,13 +121,13 @@ export async function createXAB(inputTokenX: string, outputTokenA: string, outpu
     } else if (fs.existsSync('src/v1/liquidity/pair/pair' + outputTokenBInfo.symbol + inputTokenXInfo.symbol + '.json')) {
         targetPoolXB = JSON.parse(fs.readFileSync('src/v1/liquidity/pair/pair' + outputTokenBInfo.symbol + inputTokenXInfo.symbol + '.json', 'utf8'))[0];
     }
-    const targetPoolInfoB = await formatAmmKeysById(targetPoolXB)
-    const poolKeysB = jsonInfo2PoolKeys(targetPoolInfoB) as LiquidityPoolKeys
+    const targetPoolInfoXB = await formatAmmKeysById(targetPoolXB)
+    const poolKeysXB = jsonInfo2PoolKeys(targetPoolInfoXB) as LiquidityPoolKeys
     const currencyOutB = new Token(TOKEN_PROGRAM_ID, outputTokenB, outputTokenBInfo.decimals, outputTokenBInfo.symbol, outputTokenBInfo.name)
     // -------- step 1: coumpute amount out --------
     const { amountOut: amountOutB, minAmountOut: minAmountOutB } = Liquidity.computeAmountOut({
-        poolKeys: poolKeysB,
-        poolInfo: await Liquidity.fetchInfo({ connection, poolKeys: poolKeysB }),
+        poolKeys: poolKeysXB,
+        poolInfo: await Liquidity.fetchInfo({ connection, poolKeys: poolKeysXB }),
         amountIn: inputTokenXBAmount,
         currencyOut: currencyOutB,
         slippage: slippage,
@@ -136,44 +141,82 @@ export async function createXAB(inputTokenX: string, outputTokenA: string, outpu
     }
     const targetPoolInfoAB = await formatAmmKeysById(targetPoolAB)
     const poolKeysAB = jsonInfo2PoolKeys(targetPoolInfoAB) as LiquidityPoolKeys
-    const extraPoolInfoAB = await Liquidity.fetchInfo({ connection, poolKeys })
+    const extraPoolInfoAB = await Liquidity.fetchInfo({ connection, poolKeys: poolKeysAB })
     let { maxAnotherAmount, anotherAmount, liquidity } = Liquidity.computeAnotherAmount({
-        poolKeys,
-        poolInfo: { ...targetPoolInfo, ...extraPoolInfoAB },
+        poolKeys: poolKeysAB,
+        poolInfo: { ...targetPoolInfoAB, ...extraPoolInfoAB },
         amount: amountOutA,
         anotherCurrency: outputTokenBClass,
         slippage: slippage,
     })
 
-    let instructions = [];
-    instructions.push(await createSwapInstruction(
+
+    instructions = instructions.concat(await createSwapInstruction(
         inputTokenX,
         outputTokenA,
         targetPoolXA,
         inputAmount / 2,
         wallet,
     ));
-    instructions.push(await createSwapInstruction(
+    instructions = instructions.concat(await createSwapInstruction(
         inputTokenX,
         outputTokenB,
-        targetPoolXA,
+        targetPoolXB,
         inputAmount / 2,
         wallet,
     ));
 
-    if (amountOutB > anotherAmount) {
+    if (amountOutB.sub(anotherAmount).raw.toNumber() > 0) {
         const addLiquidityABInstruction = await createAddLiquidityInstruction(
             outputTokenA,
             outputTokenB,
             wallet,
-            parseInt(amountOutA.raw.toString()),
+            amountOutA.raw.toNumber(),
         );
-        instructions.push(addLiquidityABInstruction);
+        instructions = instructions.concat(addLiquidityABInstruction);
+        // swap remain B to X
+        const swapBtoXInstruction = await createSwapInstruction(
+            outputTokenB,
+            inputTokenX,
+            targetPoolXB,
+            amountOutB.sub(anotherAmount).raw.toNumber(),
+            wallet,
+        );
+        instructions = instructions.concat(swapBtoXInstruction);
+    } else {
+        const poolKeysAB = jsonInfo2PoolKeys(targetPoolInfoAB) as LiquidityPoolKeys
+        const extraPoolInfoAB = await Liquidity.fetchInfo({ connection, poolKeys: poolKeysAB })
+        let { maxAnotherAmount, anotherAmount, liquidity } = Liquidity.computeAnotherAmount({
+            poolKeys: poolKeysAB,
+            poolInfo: { ...targetPoolInfoAB, ...extraPoolInfoAB },
+            amount: amountOutB,
+            anotherCurrency: outputTokenAClass,
+            slippage: slippage,
+        });
+        assert(amountOutA.sub(anotherAmount).raw.toNumber() >= 0, 'amountOutA.sub(anotherAmount).raw.toNumber() < 0');
+        const addLiquidityABInstruction = await createAddLiquidityInstruction(
+            outputTokenB,
+            outputTokenA,
+            wallet,
+            amountOutB.raw.toNumber(),
+        );
+        instructions = instructions.concat(addLiquidityABInstruction);
+        // swap remain A to X
+        if (amountOutA.sub(anotherAmount).raw.toNumber() > 0) {
+            const swapAtoXInstruction = await createSwapInstruction(
+                outputTokenA,
+                inputTokenX,
+                targetPoolXA,
+                amountOutA.sub(anotherAmount).raw.toNumber(),
+                wallet,
+            );
+            instructions = instructions.concat(swapAtoXInstruction);
+        }
     }
+    return instructions;
 }
 
 
-}
 
 // howToUse();
 

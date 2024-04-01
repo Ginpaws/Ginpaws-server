@@ -11,4 +11,4 @@ export async function main(targetPool: string) {
     console.log(data);
 }
 
-main("Avp1mmqnSPyCr94eWT8JifJsy3zeFFLhaHm7rb2x8rxg");
+main("AW83cW8FktqWDyRpijQ15tMo8wREExBBgzGGJtgHyDmC");

@@ -60,8 +60,17 @@ export async function buildAndSendTx(innerSimpleV0Transaction: InnerSimpleV0Tran
         innerTransactions: innerSimpleV0Transaction,
         // addLookupTableInfo: addLookupTableInfo,
     })
-
     return await sendTx(connection, wallet, willSendTx, options)
+}
+
+export async function buildAndSendMultipleTx(innerSimpleV0Transaction: InnerSimpleV0Transaction[], options?: SendOptions) {
+    const tx = new Transaction();
+    innerSimpleV0Transaction.forEach((i) => {
+        i.instructions.forEach((j) => {
+            tx.add(j);
+        });
+    })
+    return await sendTx(connection, wallet, [tx], options);
 }
 
 export function getATAAddress(programId: PublicKey, owner: PublicKey, mint: PublicKey) {
@@ -75,4 +84,45 @@ export function getATAAddress(programId: PublicKey, owner: PublicKey, mint: Publ
 export async function sleepTime(ms: number) {
     console.log((new Date()).toLocaleString(), 'sleepTime', ms)
     return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+export function loadInnerSimpleV0Transaction(objarray: any): InnerSimpleV0Transaction[] {
+    // load objarray to a InnerSimpleV0Transaction[]
+    objarray.forEach((obj: any) => {
+        if (obj.innerTransactions) {
+            obj.innerTransactions.forEach((element: InnerSimpleV0Transaction) => {
+                element.instructions = element.instructions.map((i: any) => {
+                    i.programId = new PublicKey(i.programId);
+                    if (i.keys) {
+                        i.keys = i.keys.map((a: any) => {
+                            a.pubkey = new PublicKey(a.pubkey);
+                            return a;
+                        });
+                    }
+                    if (i.data) {
+                        i.data = Buffer.from(i.data, 'base64');
+                    }
+                    return i;
+                });
+            });
+        }
+    });
+    return objarray;
+}
+
+export function combineInstructions(objarray: any) {
+    // combine instructions to a single array
+    const instructions: any = [];
+    objarray.forEach((obj: any) => {
+        if (obj.innerTransactions) {
+            obj.innerTransactions.forEach((element: InnerSimpleV0Transaction) => {
+                instructions.push({
+                    instructions: element.instructions,
+                    signers: element.signers,
+                    instructionTypes: element.instructionTypes,
+                });
+            });
+        }
+    });
+    return instructions;
 }
