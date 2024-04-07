@@ -19,7 +19,7 @@ import {
     makeTxVersion,
     wallet
 } from '../config';
-import { formatAmmKeysById } from './getActivePools';
+import { formatAmmKeysById } from './getPoolInfo';
 import {
     buildAndSendTx,
     getWalletTokenAccount,

@@ -15,7 +15,7 @@ import {
     connection,
     makeTxVersion,
 } from '../config';
-import { formatAmmKeysById } from '../liquidity/getActivePools';
+import { formatAmmKeysById } from '../liquidity/getPoolInfo';
 
 import TOKEN from '../token/tokens.json';
 import { getWalletTokenAccount } from '../utils';

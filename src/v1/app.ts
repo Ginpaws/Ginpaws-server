@@ -4,7 +4,7 @@ import bodyParser from 'body-parser';
 import { createNewMarket, createNewMarketInstructions } from './createMarket';
 import TOKEN from './token/tokens.json';
 import fs from 'fs';
-import { formatAmmKeysById } from './liquidity/getActivePools';
+import { formatAmmKeysById, getPoolInfo } from './liquidity/getPoolInfo';
 import { createNewPoolInstruction } from './liquidity/createNewPool';
 import { createSwapInstruction } from './swap/swapTokens';
 import { createAddLiquidityInstruction } from './liquidity/addLiquidity';
@@ -25,93 +25,99 @@ app.listen(port, () => {
   return console.log(`Express is listening at http://localhost:${port}`);
 });
 
-app.get("/createNewMarket", async (req, res) => {
-  if (!req.query.baseToken || !req.query.quoteToken || !req.query.wallet) {
-    return res
-      .status(400)
-      .send("baseToken, quoteToken, and wallet are required");
-  }
-  const baseToken = req.query.baseToken.toString();
-  const quoteToken = req.query.quoteToken.toString();
-  const baseTokenInfo = TOKEN.find((i) => i.mint === baseToken);
-  const quoteTokenInfo = TOKEN.find((i) => i.mint === quoteToken);
-  if (!baseTokenInfo || !quoteTokenInfo) {
-    res.status(400).send("cannot find the token info");
-  }
-  const wallet = req.query.wallet.toString();
-  if (!baseToken || !quoteToken || !wallet) {
-    return res
-      .status(400)
-      .send("baseToken, quoteToken, and wallet are required");
-  }
-  const newMarketInstructions = await createNewMarketInstructions(
-    baseToken,
-    quoteToken,
-    wallet
-  );
-  res.send(newMarketInstructions);
-});
+// app.get("/createNewMarket", async (req, res) => {
+//   if (!req.query.baseToken || !req.query.quoteToken || !req.query.wallet) {
+//     return res
+//       .status(400)
+//       .send("baseToken, quoteToken, and wallet are required");
+//   }
+//   const baseToken = req.query.baseToken.toString();
+//   const quoteToken = req.query.quoteToken.toString();
+//   const baseTokenInfo = TOKEN.find((i) => i.mint === baseToken);
+//   const quoteTokenInfo = TOKEN.find((i) => i.mint === quoteToken);
+//   if (!baseTokenInfo || !quoteTokenInfo) {
+//     res.status(400).send("cannot find the token info");
+//   }
+//   const wallet = req.query.wallet.toString();
+//   if (!baseToken || !quoteToken || !wallet) {
+//     return res
+//       .status(400)
+//       .send("baseToken, quoteToken, and wallet are required");
+//   }
+//   const newMarketInstructions = await createNewMarketInstructions(
+//     baseToken,
+//     quoteToken,
+//     wallet
+//   );
+//   res.send(newMarketInstructions);
+// });
 
-app.post("/createNewPool", async (req, res) => {
-  console.log(req.body);
-  const baseToken = req.body.baseToken.toString();
-  const quoteToken = req.body.quoteToken.toString();
-  const baseTokenInfo = TOKEN.find((i) => i.mint === baseToken);
-  const quoteTokenInfo = TOKEN.find((i) => i.mint === quoteToken);
-  if (!baseTokenInfo || !quoteTokenInfo) {
-    res.status(400).send("cannot find the token info");
-  }
-  const path =
-    "src/v1/liquidity/pair" +
-    baseTokenInfo.symbol +
-    quoteTokenInfo.symbol +
-    ".json";
-  const pairExists = fs.existsSync(path);
-  if (pairExists) {
-    const pool_id = fs.readFileSync(path, "utf8");
-    const pool = await formatAmmKeysById(pool_id);
-    if (pool) res.status(400).send("pool already exists");
-  }
+// app.post("/createNewPool", async (req, res) => {
+//   console.log(req.body);
+//   const baseToken = req.body.baseToken.toString();
+//   const quoteToken = req.body.quoteToken.toString();
+//   const baseTokenInfo = TOKEN.find((i) => i.mint === baseToken);
+//   const quoteTokenInfo = TOKEN.find((i) => i.mint === quoteToken);
+//   if (!baseTokenInfo || !quoteTokenInfo) {
+//     res.status(400).send("cannot find the token info");
+//   }
+//   const path =
+//     "src/v1/liquidity/pair" +
+//     baseTokenInfo.symbol +
+//     quoteTokenInfo.symbol +
+//     ".json";
+//   const pairExists = fs.existsSync(path);
+//   if (pairExists) {
+//     const pool_id = fs.readFileSync(path, "utf8");
+//     const pool = await formatAmmKeysById(pool_id);
+//     if (pool) res.status(400).send("pool already exists");
+//   }
 
-  if (!req.body.marketId) {
-    return res.status(400).send("marketId is required");
-  }
-  const marketId = req.body.marketId.toString();
+//   if (!req.body.marketId) {
+//     return res.status(400).send("marketId is required");
+//   }
+//   const marketId = req.body.marketId.toString();
 
-  const wallet = req.body.wallet.toString();
-  if (!wallet) {
+//   const wallet = req.body.wallet.toString();
+//   if (!wallet) {
+//     return res.status(400).send("wallet is required");
+//   }
+//   const addBaseAmount = parseInt(req.body.addBaseAmount);
+//   if (!addBaseAmount) {
+//     return res.status(400).send("addBaseAmount is required");
+//   }
+//   const addQuoteAmount = parseInt(req.body.addQuoteAmount);
+//   if (!addQuoteAmount) {
+//     return res.status(400).send("addQuoteAmount is required");
+//   }
+//   try {
+//     const instruction = await createNewPoolInstruction(
+//       baseToken,
+//       quoteToken,
+//       wallet,
+//       addBaseAmount,
+//       addQuoteAmount,
+//       marketId
+//     );
+//     res.send(instruction);
+//   } catch (error) {
+//     console.log(error);
+//     res.status(400).send(error);
+//   }
+// });
+
+app.get("/getPoolInfo", async (req, res) => {
+  if (!req.query.wallet) {
     return res.status(400).send("wallet is required");
   }
-  const addBaseAmount = parseInt(req.body.addBaseAmount);
-  if (!addBaseAmount) {
-    return res.status(400).send("addBaseAmount is required");
+  if (!req.query.tokenInputA) {
+    return res.status(400).send("tokenInputA is required");
   }
-  const addQuoteAmount = parseInt(req.body.addQuoteAmount);
-  if (!addQuoteAmount) {
-    return res.status(400).send("addQuoteAmount is required");
+  if (!req.query.tokenInputB) {
+    return res.status(400).send("tokenInputB is required");
   }
-  try {
-    const instruction = await createNewPoolInstruction(
-      baseToken,
-      quoteToken,
-      wallet,
-      addBaseAmount,
-      addQuoteAmount,
-      marketId
-    );
-    res.send(instruction);
-  } catch (error) {
-    console.log(error);
-    res.status(400).send(error);
-  }
-});
-
-app.get("/getActivePool", async (req, res) => {
-  if (!req.query.id) {
-    return res.status(400).send("id is required");
-  }
-  const id = req.query.id.toString();
-  const pool = await formatAmmKeysById(id);
+  const pool = await getPoolInfo(req.query.tokenInputA.toString(), req.query.tokenInputB.toString(),
+    req.query.wallet.toString());
   res.send(pool);
 });
 
@@ -184,14 +190,14 @@ app.post("/x_ab", async (req, res) => {
   }
 });
 
-app.post("/addLiquidity", async (req, res) => {
-  const { inputTokenA, inputTokenB, wallet, amount } = req.body;
-  if (!inputTokenA || !inputTokenB || !wallet || !amount) {
-    return res.status(400).send("inputTokenA, inputTokenB, wallet, and amount are required");
-  }
-  const instructions = await createAddLiquidityInstruction(inputTokenA, inputTokenB, wallet, amount);
-  res.send(instructions);
-})
+// app.post("/addLiquidity", async (req, res) => {
+//   const { inputTokenA, inputTokenB, wallet, amount } = req.body;
+//   if (!inputTokenA || !inputTokenB || !wallet || !amount) {
+//     return res.status(400).send("inputTokenA, inputTokenB, wallet, and amount are required");
+//   }
+//   const instructions = await createAddLiquidityInstruction(inputTokenA, inputTokenB, wallet, amount);
+//   res.send(instructions);
+// })
 
 app.post("/getTokenOutAmount_xab", async (req, res) => {
   const { tokenIn, tokenOut1, tokenOut2, wallet, amountTokenIn } = req.body;

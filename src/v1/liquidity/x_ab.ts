@@ -15,7 +15,7 @@ import {
     connection,
     makeTxVersion,
 } from '../config';
-import { formatAmmKeysById } from '../liquidity/getActivePools';
+import { formatAmmKeysById } from './getPoolInfo';
 
 import TOKEN from '../token/tokens.json';
 import { getWalletTokenAccount } from '../utils';
@@ -279,6 +279,7 @@ export async function getAmountXAB(inputTokenX: string, outputTokenA: string, ou
         targetPoolAB = JSON.parse(fs.readFileSync('src/v1/liquidity/pair/pair' + outputTokenBInfo.symbol + outputTokenAInfo.symbol + '.json', 'utf8'))[0];
     }
     const targetPoolInfoAB = await formatAmmKeysById(targetPoolAB)
+    console.log('targetPoolInfoAB:', targetPoolInfoAB)
     const poolKeysAB = jsonInfo2PoolKeys(targetPoolInfoAB) as LiquidityPoolKeys
     const extraPoolInfoAB = await Liquidity.fetchInfo({ connection, poolKeys: poolKeysAB })
     const { maxAnotherAmount, anotherAmount, liquidity } =
