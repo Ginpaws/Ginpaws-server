@@ -8,7 +8,7 @@ import { formatAmmKeysById } from './liquidity/getActivePools';
 import { createNewPoolInstruction } from './liquidity/createNewPool';
 import { createSwapInstruction } from './swap/swapTokens';
 import { createAddLiquidityInstruction } from './liquidity/addLiquidity';
-import { createXAB } from './liquidity/x_ab';
+import { createXAB, getAmountXAB } from './liquidity/x_ab';
 import { wallet } from "./config";
 import cors from "cors";
 const app = express();
@@ -185,10 +185,40 @@ app.post("/x_ab", async (req, res) => {
 });
 
 app.post("/addLiquidity", async (req, res) => {
-    const { inputTokenA, inputTokenB, wallet, amount } = req.body;
-    if (!inputTokenA || !inputTokenB || !wallet || !amount) {
-        return res.status(400).send("inputTokenA, inputTokenB, wallet, and amount are required");
-    }
-    const instructions = await createAddLiquidityInstruction(inputTokenA, inputTokenB, wallet, amount);
-    res.send(instructions);
+  const { inputTokenA, inputTokenB, wallet, amount } = req.body;
+  if (!inputTokenA || !inputTokenB || !wallet || !amount) {
+    return res.status(400).send("inputTokenA, inputTokenB, wallet, and amount are required");
+  }
+  const instructions = await createAddLiquidityInstruction(inputTokenA, inputTokenB, wallet, amount);
+  res.send(instructions);
+})
+
+app.post("/getTokenOutAmount_xab", async (req, res) => {
+  const { tokenIn, tokenOut1, tokenOut2, wallet, amountTokenIn } = req.body;
+  if (!tokenIn) {
+    return res.status(400).send("tokenIn is required");
+  }
+  if (!tokenOut1) {
+    return res.status(400).send("tokenOut1 is required");
+  }
+  if (!tokenOut2) {
+    return res.status(400).send("tokenOut2 is required");
+  }
+  if (!wallet) {
+    return res.status(400).send("wallet is required");
+  }
+  if (!amountTokenIn) {
+    return res.status(400).send("amountTokenIn is required");
+  }
+  if (
+    tokenIn.address === tokenOut1.address ||
+    tokenIn.address === tokenOut2.address ||
+    tokenOut1.address === tokenOut2.address
+  ) {
+    return res
+      .status(400)
+      .send("tokenIn, tokenOut1, and tokenOut2 must be different");
+  }
+  const { amountTokenA, amountTokenB } = await getAmountXAB(tokenIn.address, tokenOut1.address, tokenOut2.address, wallet, parseInt(amountTokenIn));
+  return res.send({ amountTokenA, amountTokenB });
 })
